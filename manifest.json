@@ -11,7 +11,13 @@
   "host_permissions": [
     "https://seasonaljobs.dol.gov/*"
   ],
+  "icons": {
+    "128": "icons/icon128.png"
+  },
   "action": {
+    "default_icon": {
+      "128": "icons/icon128.png"
+    },
     "default_popup": "popup/popup.html"
   },
   "background": {
