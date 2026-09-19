@@ -8,18 +8,18 @@ function checkAndInjectButton() {
       targetEmail = emailMatch[1].trim();
   }
   
-  // Tentativa 2: Busca por links
+  // Tentativa 2: Busca por links apenas dentro do conteúdo principal (ignora rodapé/cabeçalho)
   if (!targetEmail) {
-      const mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
+      const mainContainer = document.querySelector('main') || document.body;
+      const mailtoLinks = Array.from(mainContainer.querySelectorAll('a[href^="mailto:"]'));
+      
       if (mailtoLinks.length > 0) {
           for (const link of mailtoLinks) {
               const text = (link.innerText || link.textContent || '').trim();
+              // Só aceita o link se o texto visível for de fato um e-mail (contém @)
               if (text.includes('@')) {
                   targetEmail = link.href.replace(/^mailto:\s*/i, '').split('?')[0];
               }
-          }
-          if (!targetEmail) {
-              targetEmail = mailtoLinks[mailtoLinks.length - 1].href.replace(/^mailto:\s*/i, '').split('?')[0];
           }
       }
   }
