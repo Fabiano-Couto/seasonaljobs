@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitor Seasonal Jobs</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h2>🎯 Monitor de Vagas</h2>
+    
+    <div class="section">
+      <label for="resume-link" class="section-title">🔗 Link do seu Currículo (G-Drive, LinkedIn):</label>
+      <input type="url" id="resume-link" placeholder="https://drive.google.com/..." class="full-input">
+      <p class="help-text">Será incluído automaticamente no final dos seus e-mails.</p>
+    </div>
+
+    <div class="section">
+      <label class="section-title">🔍 Vagas Monitoradas:</label>
+      <div class="input-group">
+        <input type="text" id="keyword-input" placeholder="Nova palavra-chave (ex: Line Cook)">
+        <button id="add-btn">Adicionar</button>
+      </div>
+      <ul id="keyword-list"></ul>
+    </div>
+
+    <div class="section template-section" id="template-section">
+      <label class="section-title">✉️ Mensagem para: <span id="current-keyword-label">...</span></label>
+      <p class="help-text">Selecione uma vaga acima para editar sua carta de apresentação.</p>
+      <textarea id="email-body" rows="5" placeholder="Dear Hiring Manager,\n\nI would like to apply..." disabled></textarea>
+      <div id="save-status">Salvo automaticamente</div>
+    </div>
+    
+    <div class="status-bar">
+      <span id="status-text">Monitoramento Ativo</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-monitor" checked>
+        <span class="slider round"></span>
+      </label>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+#sj-auto-apply-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #2e8540;
+  color: white !important;
+  padding: 15px 20px;
+  border-radius: 8px;
+  text-decoration: none !important;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  z-index: 999999;
+  text-align: center;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+#sj-auto-apply-btn:hover {
+  background-color: #246a32;
+  transform: scale(1.05);
+}
+
+#sj-auto-apply-btn small {
+  font-size: 11px;
+  font-weight: normal;
+  display: block;
+  margin-top: 4px;
+}
