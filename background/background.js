@@ -30,7 +30,8 @@ async function checkNewJobs() {
           },
           body: JSON.stringify({
             search: keyword,
-            top: 15 // Traz as 15 vagas mais relevantes/recentes para essa palavra
+            top: 15, // Traz as 15 vagas mais recentes para essa palavra
+            orderby: "dhTimestamp desc"
           })
         });
         
