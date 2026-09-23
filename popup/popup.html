@@ -7,8 +7,11 @@
 </head>
 <body>
   <div class="container">
-    <h2>🎯 Monitor de Vagas</h2>
-    
+    <div class="header">
+      <h2>🎯 Monitor de Vagas</h2>
+      <button id="open-site-btn" class="site-btn" title="Abrir seasonaljobs.dol.gov">🌐 Abrir site</button>
+    </div>
+
     <div class="section">
       <label for="resume-link" class="section-title">🔗 Link do seu Currículo (G-Drive, LinkedIn):</label>
       <input type="url" id="resume-link" placeholder="https://drive.google.com/..." class="full-input">
@@ -22,17 +25,24 @@
         <button id="add-btn">Adicionar</button>
       </div>
       <ul id="keyword-list"></ul>
+      <p class="help-text" id="keyword-hint">Clique numa vaga para editar a mensagem de e-mail.</p>
     </div>
 
-    <div class="section template-section" id="template-section">
-      <label class="section-title">✉️ Mensagem para: <span id="current-keyword-label">...</span></label>
-      <p class="help-text">Selecione uma vaga acima para editar sua carta de apresentação.</p>
-      <textarea id="email-body" rows="5" placeholder="Dear Hiring Manager,\n\nI would like to apply..." disabled></textarea>
+    <div class="section template-section hidden" id="template-section">
+      <div class="template-header">
+        <label class="section-title">✉️ Mensagem para: <span id="current-keyword-label"></span></label>
+        <button id="close-template-btn" class="close-btn" title="Fechar">✕</button>
+      </div>
+      <textarea id="email-body" rows="7"></textarea>
       <div id="save-status">Salvo automaticamente</div>
     </div>
-    
+
     <div class="status-bar">
-      <span id="status-text">Monitoramento Ativo</span>
+      <div class="status-info">
+        <span id="status-text">Monitoramento Ativo</span>
+        <span id="last-check-text"></span>
+      </div>
+      <button id="check-now-btn" class="check-btn" title="Verificar agora">↻</button>
       <label class="switch">
         <input type="checkbox" id="toggle-monitor" checked>
         <span class="slider round"></span>

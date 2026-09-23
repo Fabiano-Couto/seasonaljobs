@@ -11,11 +11,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const resumeLinkInput = document.getElementById('resume-link');
   const toggleMonitor = document.getElementById('toggle-monitor');
   const statusText = document.getElementById('status-text');
+  const lastCheckText = document.getElementById('last-check-text');
+  const checkNowBtn = document.getElementById('check-now-btn');
+  const keywordHint = document.getElementById('keyword-hint');
 
   let activeKeyword = null;
 
+  document.getElementById('open-site-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://seasonaljobs.dol.gov/' });
+  });
+
+  document.getElementById('close-template-btn').addEventListener('click', deselectKeyword);
+
+  checkNowBtn.addEventListener('click', () => {
+    checkNowBtn.disabled = true;
+    checkNowBtn.classList.add('spinning');
+    lastCheckText.textContent = 'Verificando...';
+    chrome.runtime.sendMessage({ type: 'checkNow' }, () => {
+      checkNowBtn.disabled = false;
+      checkNowBtn.classList.remove('spinning');
+      chrome.storage.local.get(['lastCheck'], (data) => renderLastCheck(data.lastCheck));
+    });
+  });
+
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.lastCheck) renderLastCheck(changes.lastCheck.newValue);
+  });
+
   // Load saved data
-  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'isMonitorActive'], (data) => {
+  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'isMonitorActive', 'lastCheck'], (data) => {
     const profiles = data.keywordProfiles || {};
     
     // Atualiza a lista
@@ -27,10 +51,16 @@ document.addEventListener('DOMContentLoaded', () => {
       resumeLinkInput.value = data.resumeLink;
     }
     
-    if (data.isMonitorActive !== undefined) {
-      toggleMonitor.checked = data.isMonitorActive;
-      updateStatusText(data.isMonitorActive);
+    // undefined = nunca mexeu no switch = ativo (mesma regra do background)
+    const isActive = data.isMonitorActive !== false;
+    toggleMonitor.checked = isActive;
+    updateStatusText(isActive);
+    if (data.isMonitorActive === undefined) {
+      chrome.storage.local.set({isMonitorActive: true});
     }
+
+    updateKeywordHint();
+    renderLastCheck(data.lastCheck);
   });
 
   // Salvar Resume Link
@@ -51,6 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addKeywordToList(kw);
             keywordInput.value = '';
             selectKeyword(kw);
+            updateKeywordHint();
+            // Busca inicial registra as vagas que já existem, para só notificar as novas
+            chrome.runtime.sendMessage({ type: 'checkNow' });
           });
         } else {
           alert('Esta vaga já está sendo monitorada!');
@@ -99,14 +132,20 @@ document.addEventListener('DOMContentLoaded', () => {
           if (activeKeyword === kw) {
             deselectKeyword();
           }
+          updateKeywordHint();
         });
       });
     };
     
     li.appendChild(removeBtn);
     
+    // Clicar de novo na vaga aberta fecha a mensagem
     li.onclick = () => {
-      selectKeyword(kw);
+      if (activeKeyword === kw) {
+        deselectKeyword();
+      } else {
+        selectKeyword(kw);
+      }
     };
     
     keywordList.appendChild(li);
@@ -115,8 +154,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function selectKeyword(kw) {
     activeKeyword = kw;
     currentKeywordLabel.textContent = kw;
-    emailBodyInput.disabled = false;
-    
+    templateSection.classList.remove('hidden');
+
     // Atualiza visual da lista
     document.querySelectorAll('#keyword-list li').forEach(li => {
       if (li.dataset.kw === kw) {
@@ -130,15 +169,39 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get({keywordProfiles: {}}, (data) => {
       const profiles = data.keywordProfiles;
       emailBodyInput.value = profiles[kw] || '';
+      emailBodyInput.focus();
     });
   }
 
   function deselectKeyword() {
     activeKeyword = null;
-    currentKeywordLabel.textContent = '...';
+    currentKeywordLabel.textContent = '';
     emailBodyInput.value = '';
-    emailBodyInput.disabled = true;
+    templateSection.classList.add('hidden');
     document.querySelectorAll('#keyword-list li').forEach(li => li.classList.remove('selected'));
+  }
+
+  function updateKeywordHint() {
+    keywordHint.style.display = keywordList.children.length ? 'block' : 'none';
+  }
+
+  function renderLastCheck(lastCheck) {
+    if (!lastCheck) {
+      lastCheckText.textContent = 'Ainda não verificou';
+      lastCheckText.className = '';
+      return;
+    }
+    const hora = new Date(lastCheck.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (lastCheck.errors && lastCheck.errors.length) {
+      lastCheckText.textContent = `${hora} · erro na busca`;
+      lastCheckText.title = lastCheck.errors.join('\n');
+      lastCheckText.className = 'error';
+    } else {
+      const novas = lastCheck.newCount === 1 ? '1 vaga nova' : `${lastCheck.newCount} vagas novas`;
+      lastCheckText.textContent = `Última verificação ${hora} · ${novas}`;
+      lastCheckText.title = '';
+      lastCheckText.className = '';
+    }
   }
 
   let saveTimeout;

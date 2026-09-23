@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Seasonal Jobs Monitor",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Monitora vagas no portal SeasonalJobs.dol.gov e alerta o usuário rapidamente.",
   "permissions": [
     "storage",
@@ -9,7 +9,8 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://seasonaljobs.dol.gov/*"
+    "https://seasonaljobs.dol.gov/*",
+    "https://api.seasonaljobs.dol.gov/*"
   ],
   "icons": {
     "128": "icons/icon128.png"
