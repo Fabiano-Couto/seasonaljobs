@@ -244,3 +244,43 @@ test('clique na notificação do SeasonalJobs abre a vaga no site do DOL', () =>
   bg.clickListeners[0]('job-H-400-26260-242502');
   assert.deepEqual(bg.opened, ['https://seasonaljobs.dol.gov/jobs/H-400-26260-242502']);
 });
+
+// ---------- Revisão independente, rodada 2 (10/11/2026) ----------
+// A guarda do perfil exigia o id logo depois do nome da tag; na página real, outros frames já vêm com a classe
+// antes do id (<turbo-frame class="scroll-mt-36" id="job-openings">). Uma classe no bloco do perfil faria todo
+// perfil virar erro. E a guarda precisa valer pelos dois lados: perfil real sem vaga não é erro; página da
+// CoolWorks sem o bloco do perfil é.
+
+const CAMP_NO_OPENINGS = fixture('coolworks-profile-camp-birch-hill-sem-vagas.html');
+const HAMPTON_WITH_CLASS = HAMPTON
+  .replace('<turbo-frame id="profile_3470">', '<turbo-frame class="mx-auto" id="profile_3470">')
+  .replaceAll('<turbo-frame id="job_', '<turbo-frame class="scroll-mt-36" id="job_');
+// Página da própria CoolWorks sem perfil (manutenção, perfil fora do ar): só os frames de sempre (tags reais)
+const COOLWORKS_WITHOUT_PROFILE = '<turbo-frame id="modal">\n</turbo-frame>\n'
+  + '<turbo-frame class="grow bg-linear-to-b from-white to-stone-100" id="main"><main><h1>We will be right back</h1></main></turbo-frame>';
+
+test('perfil com classe antes do id (no bloco do perfil e nos cards) continua sendo lido', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON_WITH_CLASS });
+  const first = await bg.ctx.checkNewJobs();
+  assert.deepEqual(Array.from(first.errors), []);
+
+  const firstCard = HAMPTON_WITH_CLASS.match(/<turbo-frame class="scroll-mt-36" id="job_21495">[\s\S]*?<\/turbo-frame>/)[0];
+  bg.pages[HAMPTON_URL] = HAMPTON_WITH_CLASS.replace(firstCard,
+    firstCard.replace('job_21495', 'job_99601').replace(/Housekeeper/g, 'Pool Attendant') + '\n' + firstCard);
+  await bg.ctx.checkNewJobs();
+  assert.deepEqual(titles(bg.notifications), ['Nova vaga J1/H2B: Pool Attendant']);
+});
+
+test('perfil real sem vagas na lista não é erro e não avisa nada', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: CAMP_NO_OPENINGS });
+  const first = await bg.ctx.checkNewJobs();
+  const second = await bg.ctx.checkNewJobs();
+  assert.deepEqual([...first.errors, ...second.errors], []);
+  assert.deepEqual(titles(bg.notifications), []);
+});
+
+test('página da CoolWorks sem o bloco do perfil (só os frames de sempre) é erro, não "0 vagas"', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: COOLWORKS_WITHOUT_PROFILE, [HAMPTON_URL]: HAMPTON });
+  const first = await bg.ctx.checkNewJobs();
+  assert.equal(first.errors.join(' / '), `CoolWorks · The Island House: ${PROFILE_ERROR}`);
+});
