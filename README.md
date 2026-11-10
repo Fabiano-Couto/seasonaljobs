@@ -1,7 +1,7 @@
 <div align="center">
   <img src="icons/icon128.png" width="128" height="128" alt="Seasonal Jobs Monitor Logo">
   <h1>🌟 Seasonal Jobs Monitor</h1>
-  <p>Uma extensão poderosa para o Google Chrome que automatiza a busca e candidatura de vagas no portal oficial do Governo dos EUA (SeasonalJobs.dol.gov).</p>
+  <p>Uma extensão poderosa para o Google Chrome que automatiza a busca e candidatura de vagas no portal oficial do Governo dos EUA (SeasonalJobs.dol.gov) e nas vagas para visto J1/H2B da CoolWorks.com.</p>
 </div>
 
 ---
@@ -12,9 +12,11 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 
 ## ✨ Funcionalidades Incríveis
 
-### 🕵️ Monitoramento 100% Automático na Nuvem
-- **Integração Direta via API:** A extensão ignora a interface visual do site e consulta diretamente o banco de dados do governo via Azure Cognitive Search a cada 15 minutos.
-- **Notificações Nativas:** Assim que uma nova vaga (que você ainda não viu) for publicada contendo suas palavras-chave favoritas, você receberá um alerta nativo do Windows/Chrome na mesma hora!
+### 🕵️ Monitoramento 100% Automático
+- **SeasonalJobs (DOL):** a extensão consulta direto a busca do site (Azure Cognitive Search) **a cada 5 minutos**, uma vez por palavra-chave, pegando as 10 vagas ativas mais recentes de cada uma (a API do DOL só aceita pedir 1, 10 ou 12 por vez).
+- **CoolWorks · J1/H2B:** a cada 5 minutos a extensão lê a página [J1 / H2B Visa Jobs](https://www.coolworks.com/international-job-seekers) e o perfil de cada empresa listada nela. Avisa **toda** vaga nova dessa página (sem filtro de palavra-chave — a página já é o filtro), cada vaga nova no perfil dessas empresas e, com um aviso só, cada empresa nova que aparecer. As consultas vão com os cookies do seu Chrome (o site usa a proteção anti-robô do Cloudflare).
+- **Um liga/desliga por site** no popup, e o rodapé mostra a última verificação e qual site falhou, se falhar.
+- **Notificações Nativas:** a primeira leitura de cada site só registra o que já existe; depois disso, cada vaga nova vira um alerta do Windows/Chrome — clique nele para abrir a vaga.
 
 ### ✍️ Templates de E-mail Dinâmicos
 - **Personalização por Vaga:** Crie modelos de e-mail personalizados para diferentes tipos de vagas (ex: um modelo para *Landscaping*, outro para *Housekeeping*).
@@ -25,6 +27,7 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 
 ### ⚡ Botão "Candidatar-se Agora"
 - Ao abrir qualquer vaga compatível, um botão flutuante e verde surgirá na tela. Com apenas um clique, o e-mail abre com o destinatário, assunto (ex: `Application for Landscaper at Ortega's Lawn`) e o corpo 100% prontos para enviar!
+- **Na CoolWorks:** o botão aparece na página da vaga (quando ela informa um e-mail — vaga que só tem "Apply Now" para um sistema externo não ganha botão) e em **cada vaga da lista do perfil da empresa**. Em perfil com várias vagas, o botão flutuante vira um aviso que leva até a lista.
 - **Gmail ou Outlook:** no popup, em "Enviar a candidatura pelo", escolha **Gmail** (padrão — abre a tela "Escrever" numa aba do Chrome) ou o **app de e-mail do Windows** (link `mailto:`, normalmente o Outlook). Com mais de uma conta Google no Chrome, informe a conta do Gmail que deve enviar; em branco, vale a conta principal.
 
 ---
@@ -42,12 +45,15 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 
 ## ⚙️ Como Usar (Configuração Rápida)
 
-1. Clique no ícone da extensão no navegador para abrir as Configurações.
-2. **Defina suas Palavras-Chave:** Adicione termos (ex: `Landscaping`, `Farm`, `Cleaner`) e associe um texto/template de e-mail diferente para cada uma.
-3. **Variáveis:** No texto do e-mail, use `[Job Title]` e `[Company Name]`. Nós substituiremos isso pelos dados reais da vaga na hora do clique!
-4. **Currículo:** Cole o link público do seu currículo.
-5. **Monitor:** Ative a chave "Ativar Monitoramento de Novas Vagas".
-6. Clique em **Salvar Configurações** e navegue até [seasonaljobs.dol.gov](https://seasonaljobs.dol.gov) para ver a mágica acontecer!
+Tudo no popup é salvo automaticamente, na hora — não há botão de salvar.
+
+1. Clique no ícone da extensão no navegador para abrir o popup.
+2. **Currículo:** cole o link público do seu currículo.
+3. **Enviar a candidatura pelo:** Gmail (padrão) ou app de e-mail do Windows; com Gmail e mais de uma conta Google no Chrome, informe a conta que deve enviar.
+4. **Palavras-chave:** adicione termos (ex: `Landscaping`, `Farm`, `Cleaner`) e clique em cada um para escrever o modelo de e-mail dele. Palavra-chave que aparece no título da vaga vence a que só aparece na descrição.
+5. **Variáveis:** no texto do e-mail, use `[Job Title]` e `[Company Name]` (ou `[Company/Resort Name]`); a extensão troca pelos dados da vaga na hora do clique.
+6. **Sites monitorados:** ligue ou desligue o SeasonalJobs e a CoolWorks · J1/H2B. O nome do site abre a página dele.
+7. Navegue até [seasonaljobs.dol.gov](https://seasonaljobs.dol.gov) ou [a página J1/H2B da CoolWorks](https://www.coolworks.com/international-job-seekers) e abra uma vaga.
 
 ---
 
@@ -59,10 +65,12 @@ Sem dependências — só o Node (18 ou mais novo):
 node --test tests/
 ```
 
-- `tests/email-link.test.js` — link do botão (Gmail ou `mailto:`), conta do Gmail, aba nova, botões refeitos ao mudar a configuração.
+- `tests/email-link.test.js` — link do botão (Gmail ou `mailto:`), conta do Gmail, aba nova, botões refeitos ao mudar a configuração, palavra-chave do título vencendo a da descrição, botões do perfil (uma vaga ou várias).
 - `tests/coolworks-job.test.js` — cargo e empresa lidos das páginas de vaga e de perfil da CoolWorks (JSON-LD primeiro, HTML como reserva), com o JSON-LD real em `tests/fixtures/`.
-- `tests/coolworks-monitor.test.js` — monitor da página J1/H2B: registro inicial, perfil que falha, empresa nova, limite da memória, decodificação de títulos e endereços (cards reais em `tests/fixtures/`).
+- `tests/coolworks-monitor.test.js` — monitor da página J1/H2B: registro inicial, perfil que falha ou devolve página de bloqueio, empresa nova, limite da memória, decodificação de títulos e endereços, cookies nas consultas, migração do liga/desliga e clique nas notificações (cards reais em `tests/fixtures/`).
 - `tests/seasonaljobs-page.test.js` — leitura da página de vaga do SeasonalJobs (e-mail, cargo, empresa) com uma leitura do texto por verificação.
+
+O popup não tem teste automático (precisaria de um navegador ou de uma dependência como o jsdom); ele é conferido no Chrome.
 
 ---
 
