@@ -13,7 +13,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const CONTENT_JS = path.join(__dirname, '..', 'content', 'content.js');
-const DOL_PAGE_TEXT = 'Line Cook\nJob Details\nCompany Name:\nAcme Resort LLC\nWorksite: Aspen, CO\nEmail address to Apply: jobs@acme.com\n';
+const DOL_PAGE_TEXT = 'Line Cook\nJob Details\nCompany Name:\nAcme Resort LLC\nWorksite: Aspen, CO\nEmail address to Apply: candidaturas@example.com\n';
 
 test('SeasonalJobs: a página é lida uma vez por verificação e dá e-mail, cargo e empresa', () => {
   let innerTextReads = 0;
@@ -36,7 +36,7 @@ test('SeasonalJobs: a página é lida uma vez por verificação e dá e-mail, ca
   vm.runInContext(fs.readFileSync(CONTENT_JS, 'utf8'), sandbox, { filename: CONTENT_JS });
 
   const job = sandbox.extractSeasonalJobs();
-  assert.equal(job.email, 'jobs@acme.com');
+  assert.equal(job.email, 'candidaturas@example.com');
   assert.equal(job.jobTitle, 'Line Cook');
   assert.equal(job.companyName, 'Acme Resort LLC');
   assert.equal(innerTextReads, 1);

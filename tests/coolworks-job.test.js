@@ -188,3 +188,25 @@ test('vaga no layout antigo (set/2026) sem JSON-LD continua certa', () => {
   assert.equal(job.jobTitle, 'Facilities Maintenance Technician');
   assert.equal(job.companyName, 'Theodore Roosevelt Medora Foundation');
 });
+
+test('vaga da CoolWorks sem e-mail (só o "Apply Now" para um sistema externo) não ganha botão', () => {
+  const noEmail = {
+    textContent: 'Houseboat Anchoring Crew Beach Bags',
+    querySelector: (s) => (s === '#how-to-apply'
+      ? { textContent: 'How to Apply Apply Now Contact Info Lisa (928) 555-0100', querySelector: () => null }
+      : NEW_LAYOUT[s] ?? null)
+  };
+  const sandbox = {
+    console,
+    setInterval: () => 0,
+    location: { hostname: 'www.coolworks.com', pathname: JOB_PATH },
+    document: {
+      querySelector: (s) => (s.startsWith('turbo-frame[id^="highlighted_job_"]') ? noEmail : null),
+      querySelectorAll: (s) => (s === 'script[type="application/ld+json"]' ? [{ textContent: JOB_LD }] : [])
+    },
+    chrome: { storage: { local: { get() {} }, onChanged: { addListener() {} } } }
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(CONTENT_JS, 'utf8'), sandbox, { filename: CONTENT_JS });
+  assert.equal(sandbox.extractCoolWorks(), null);
+});

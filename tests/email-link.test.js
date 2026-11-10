@@ -30,7 +30,8 @@ function fakeElement() {
     remove() { this.removed = true; },
     appendChild(child) { this.children.push(child); return child; },
     prepend(child) { this.children.unshift(child); },
-    querySelector() { return null; }
+    querySelector() { return null; },
+    addEventListener() {}
   };
 }
 
@@ -67,7 +68,7 @@ function loadContentScript({ buttonsOnPage = true, stored = {} } = {}) {
 
 // Vaga e configuração do popup como chegam de verdade: modelo com os marcadores e link do currículo
 const job = {
-  email: 'jobs@acme.com',
+  email: 'candidaturas@example.com',
   jobTitle: 'Line Cook',
   companyName: 'Acme Resort & Spa',
   bodyText: 'line cook wanted for the summer season'
@@ -85,7 +86,7 @@ test('sem escolha salva, o botão abre a tela Escrever do Gmail em aba nova', ()
   const { ctx } = loadContentScript();
   const link = ctx.buildEmailLink(job, settings);
   assert.equal(link.href,
-    'https://mail.google.com/mail/?view=cm&fs=1&to=jobs%40acme.com&su=' + SUBJECT + '&body=' + BODY);
+    'https://mail.google.com/mail/?view=cm&fs=1&to=candidaturas%40example.com&su=' + SUBJECT + '&body=' + BODY);
   assert.equal(link.newTab, true);
 });
 
@@ -93,13 +94,13 @@ test('com a conta do Gmail informada, abre nessa conta (authuser)', () => {
   const { ctx } = loadContentScript();
   const link = ctx.buildEmailLink(job, { ...settings, emailClient: 'gmail', gmailAccount: 'candidato@example.com' });
   assert.equal(link.href,
-    'https://mail.google.com/mail/?view=cm&fs=1&authuser=candidato%40example.com&to=jobs%40acme.com&su=' + SUBJECT + '&body=' + BODY);
+    'https://mail.google.com/mail/?view=cm&fs=1&authuser=candidato%40example.com&to=candidaturas%40example.com&su=' + SUBJECT + '&body=' + BODY);
 });
 
 test('escolhendo o app de e-mail do Windows, volta o mailto: na mesma aba', () => {
   const { ctx } = loadContentScript();
   const link = ctx.buildEmailLink(job, { ...settings, emailClient: 'mailto', gmailAccount: 'candidato@example.com' });
-  assert.equal(link.href, 'mailto:jobs@acme.com?subject=' + SUBJECT + '&body=' + BODY);
+  assert.equal(link.href, 'mailto:candidaturas@example.com?subject=' + SUBJECT + '&body=' + BODY);
   assert.equal(link.newTab, false);
 });
 
@@ -112,13 +113,13 @@ test('o link do Gmail vai para o botão com target _blank; o mailto tira o targe
   assert.equal(btn.attrs.target, '_blank');
   assert.equal(btn.attrs.rel, 'noopener');
 
-  ctx.applyEmailLink(btn, { href: 'mailto:jobs@acme.com', newTab: false });
-  assert.equal(btn.attrs.href, 'mailto:jobs@acme.com');
+  ctx.applyEmailLink(btn, { href: 'mailto:candidaturas@example.com', newTab: false });
+  assert.equal(btn.attrs.href, 'mailto:candidaturas@example.com');
   assert.equal(btn.attrs.target, undefined);
 });
 
 test('o botão flutuante e o botão do card da vaga abrem o Gmail da conta escolhida, em aba nova', () => {
-  const GMAIL_DA_CONTA = 'https://mail.google.com/mail/?view=cm&fs=1&authuser=candidato%40example.com&to=jobs%40acme.com&su='
+  const GMAIL_DA_CONTA = 'https://mail.google.com/mail/?view=cm&fs=1&authuser=candidato%40example.com&to=candidaturas%40example.com&su='
     + SUBJECT + '&body=' + BODY;
   const { ctx, body } = loadContentScript({
     buttonsOnPage: false,
@@ -154,4 +155,56 @@ test('mudança do monitor (lastCheck, vagas vistas) não mexe nos botões', () =
   storageListeners[0]({ lastCheck: { newValue: {} }, cwSeen: { newValue: [] } }, 'local');
   assert.equal(floating.removed, false);
   assert.deepEqual(cards.map(c => c.removed), [false, false]);
+});
+
+// ---------- Regras de antes desta mudança que nenhum teste protegia (revisão independente, 10/11/2026) ----------
+
+test('palavra-chave no título da vaga vence a que só aparece na descrição', () => {
+  const { ctx } = loadContentScript();
+  const maintenanceJob = {
+    email: 'jobs@example.com',
+    jobTitle: 'Maintenance Technician',
+    companyName: 'Acme Resort & Spa',
+    bodyText: 'maintenance technician - help the housekeeping team keep rooms ready'
+  };
+  const data = { keywordProfiles: { 'Housekeeping': 'HK [Job Title]', 'Maintenance': 'MT [Job Title]' } };
+  assert.equal(ctx.composeEmail(maintenanceJob, data).body, 'MT Maintenance Technician');
+});
+
+// Perfil da CoolWorks: as vagas da lista vêm prontas (o leitor do perfil é trocado por um falso)
+function profileOpening(title) {
+  const header = fakeElement();
+  return {
+    header,
+    opening: {
+      email: 'vagas@example.com', jobTitle: title, companyName: 'Hampton by Hilton Bar Harbor', bodyText: title.toLowerCase(),
+      card: { ...fakeElement(), querySelector: (s) => (s === '.justify-between' ? header : null) }
+    }
+  };
+}
+
+test('perfil com uma vaga: botão no card e botão flutuante para a mesma vaga', () => {
+  const { ctx, body } = loadContentScript({ buttonsOnPage: false, stored: settings });
+  const { header, opening } = profileOpening('Housekeeper');
+  ctx.extractJob = () => null;
+  ctx.extractCoolWorksOpenings = () => [opening];
+  ctx.checkAndInjectButton();
+  assert.equal(header.children.length, 1);
+  assert.equal(body.children.length, 1);
+  assert.equal(body.children[0].attrs['data-job-key'], 'vagas@example.com|Housekeeper|Hampton by Hilton Bar Harbor');
+  assert.match(body.children[0].innerHTML, /Candidatar-se Agora/);
+});
+
+test('perfil com várias vagas: um botão em cada card e o flutuante vira a dica que leva à lista', () => {
+  const { ctx, body } = loadContentScript({ buttonsOnPage: false, stored: settings });
+  const first = profileOpening('Housekeeper');
+  const second = profileOpening('Front Desk');
+  ctx.extractJob = () => null;
+  ctx.extractCoolWorksOpenings = () => [first.opening, second.opening];
+  ctx.checkAndInjectButton();
+  assert.deepEqual([first.header.children.length, second.header.children.length], [1, 1]);
+  assert.equal(body.children.length, 1);
+  assert.equal(body.children[0].attrs['data-job-key'], 'list|2|vagas@example.com');
+  assert.match(body.children[0].innerHTML, /2 vagas nesta empresa/);
+  assert.equal(body.children[0].href, '#job-openings');
 });

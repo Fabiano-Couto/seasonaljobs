@@ -42,14 +42,16 @@ const REAL_OPENING = ISLAND.match(/<turbo-frame id="job_2127">[\s\S]*?<\/turbo-f
 const ISLAND_WITH_NEW = ISLAND.replace(REAL_OPENING,
   REAL_OPENING.replace('job_2127', 'job_99502').replace('1852 Grill Room Cook', 'Night Auditor') + '\n' + REAL_OPENING);
 
-function loadBackground(pages) {
-  const store = { monitorSites: { seasonaljobs: false, coolworks: true } };
+function loadBackground(pages, initialStore = { monitorSites: { seasonaljobs: false, coolworks: true } }) {
+  const store = { ...initialStore };
   const notifications = [];
   const opened = [];
   const clickListeners = [];
+  const requests = [];
   const sandbox = {
     console: { log() {}, error() {} }, // os erros esperados do teste não poluem a saída
-    fetch: async (url) => {
+    fetch: async (url, options = {}) => {
+      requests.push({ url, credentials: options.credentials });
       const page = pages[url];
       if (typeof page === 'string') return { ok: true, status: 200, text: async () => page };
       return { ok: false, status: page || 404, text: async () => '', json: async () => ({}) };
@@ -74,7 +76,7 @@ function loadBackground(pages) {
   };
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(BACKGROUND_JS, 'utf8'), sandbox, { filename: BACKGROUND_JS });
-  return { ctx: sandbox, store, notifications, opened, clickListeners, pages };
+  return { ctx: sandbox, store, notifications, opened, clickListeners, pages, requests };
 }
 
 const titles = (notifications) => notifications.map(n => n.title);
@@ -211,4 +213,34 @@ test('emoji no título (&#127957; e &#x1F3D5;) chega inteiro na notificação', 
   bg.pages[INTL_URL] = withNewPost(newPost('Camp Host &#127957; &#x1F3D5;'));
   await bg.ctx.checkNewJobs();
   assert.deepEqual(titles(bg.notifications), ['Nova vaga J1/H2B: Camp Host \u{1F3D5} \u{1F3D5}']);
+});
+
+// ---------- Regras de antes desta mudança que nenhum teste protegia (revisão independente, 10/11/2026) ----------
+
+test('consultas à CoolWorks mandam os cookies do Chrome (credentials include), por causa do Cloudflare', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON });
+  await bg.ctx.checkNewJobs();
+  assert.deepEqual(bg.requests.map(r => `${r.url} ${r.credentials}`), [
+    `${INTL_URL} include`, `${ISLAND_URL} include`, `${HAMPTON_URL} include`
+  ]);
+});
+
+test('quem tinha pausado o monitor único antigo continua com o SeasonalJobs desligado; instalação nova liga os dois', async () => {
+  const API = 'https://api.seasonaljobs.dol.gov/datahub/search?api-version=2020-06-30';
+  const pages = { [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON };
+  const keywords = { keywordProfiles: { 'Cook': 'x' } };
+
+  const paused = loadBackground(pages, { ...keywords, isMonitorActive: false });
+  await paused.ctx.checkNewJobs();
+  assert.deepEqual([paused.requests.some(r => r.url === API), paused.requests.some(r => r.url === INTL_URL)], [false, true]);
+
+  const fresh = loadBackground(pages, { ...keywords });
+  await fresh.ctx.checkNewJobs();
+  assert.deepEqual([fresh.requests.some(r => r.url === API), fresh.requests.some(r => r.url === INTL_URL)], [true, true]);
+});
+
+test('clique na notificação do SeasonalJobs abre a vaga no site do DOL', () => {
+  const bg = loadBackground({});
+  bg.clickListeners[0]('job-H-400-26260-242502');
+  assert.deepEqual(bg.opened, ['https://seasonaljobs.dol.gov/jobs/H-400-26260-242502']);
 });
