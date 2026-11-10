@@ -235,6 +235,10 @@ function parseInternationalPage(html) {
 
 // Vagas do perfil ("Current Job Openings"): não têm página própria, só o card <turbo-frame id="job_N">
 function parseProfileOpenings(html) {
+  // Todo perfil real tem o bloco <turbo-frame id="profile_N"> (até o que não tem vaga). Sem ele, a resposta é
+  // bloqueio (o desafio do Cloudflare pode vir com 200) ou o layout mudou: lida como "0 vagas", marcaria a lista
+  // como conhecida e, na leitura boa seguinte, as vagas antigas chegariam todas como novas.
+  if (!/<turbo-frame id="profile_\d+"/.test(html)) throw new Error('perfil sem o bloco da empresa (bloqueio ou layout mudou)');
   const openings = [];
   for (const [, id, block] of html.matchAll(/<turbo-frame id="job_(\d+)">([\s\S]*?)<\/turbo-frame>/g)) {
     const title = block.match(/<h4[^>]*>([^<]+)<\/h4>/);

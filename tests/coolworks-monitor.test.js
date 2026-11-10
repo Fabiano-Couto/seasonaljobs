@@ -175,6 +175,36 @@ test('empresa nova cujo perfil não responde avisa uma vez e manda ver o perfil'
   assert.equal(bg.notifications.length, 1, 'quando o perfil voltou, as vagas dele chegaram como novas');
 });
 
+// Achado da revisão independente (10/11/2026): perfil que responde 200 sem o conteúdo (desafio do Cloudflare,
+// manutenção) era lido como "lista com 0 vagas" e marcado como conhecido; na leitura boa seguinte, as vagas antigas
+// chegavam todas como novas (20 avisos da Island House). Página de perfil sem o bloco do perfil agora é erro.
+const BLOCKED = '<html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>';
+const PROFILE_ERROR = 'perfil sem o bloco da empresa (bloqueio ou layout mudou)';
+
+test('perfil que devolve página de bloqueio com 200 vira erro e não marca a lista: as vagas antigas não chegam como novas', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: BLOCKED, [HAMPTON_URL]: HAMPTON });
+  const first = await bg.ctx.checkNewJobs();
+  assert.equal(first.errors.join(' / '), `CoolWorks · The Island House: ${PROFILE_ERROR}`);
+
+  bg.pages[ISLAND_URL] = ISLAND;
+  await bg.ctx.checkNewJobs();
+  assert.deepEqual(titles(bg.notifications), []);
+});
+
+test('empresa nova cujo perfil devolve bloqueio com 200 avisa uma vez e depois registra as vagas em silêncio', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL_WITHOUT_HAMPTON, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: BLOCKED });
+  await bg.ctx.checkNewJobs();
+  bg.pages[INTL_URL] = INTL;
+  await bg.ctx.checkNewJobs();
+  assert.deepEqual(bg.notifications.map(n => `${n.title} | ${n.message}`), [
+    'Nova empresa J1/H2B: Hampton by Hilton Bar Harbor | veja as vagas no perfil'
+  ]);
+
+  bg.pages[HAMPTON_URL] = HAMPTON;
+  await bg.ctx.checkNewJobs();
+  assert.equal(bg.notifications.length, 1, 'as 5 vagas da Hampton chegaram uma a uma quando o perfil voltou');
+});
+
 test('emoji no título (&#127957; e &#x1F3D5;) chega inteiro na notificação', async () => {
   const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON });
   await bg.ctx.checkNewJobs();
