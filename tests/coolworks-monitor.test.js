@@ -48,6 +48,7 @@ function loadBackground(pages, initialStore = { monitorSites: { seasonaljobs: fa
   const opened = [];
   const clickListeners = [];
   const requests = [];
+  const installedListeners = [];
   const sandbox = {
     console: { log() {}, error() {} }, // os erros esperados do teste não poluem a saída
     fetch: async (url, options = {}) => {
@@ -57,7 +58,7 @@ function loadBackground(pages, initialStore = { monitorSites: { seasonaljobs: fa
       return { ok: false, status: page || 404, text: async () => '', json: async () => ({}) };
     },
     chrome: {
-      runtime: { getURL: (p) => `chrome-extension://teste/${p}`, onInstalled: { addListener() {} }, onStartup: { addListener() {} }, onMessage: { addListener() {} } },
+      runtime: { getURL: (p) => `chrome-extension://teste/${p}`, onInstalled: { addListener: (fn) => installedListeners.push(fn) }, onStartup: { addListener() {} }, onMessage: { addListener() {} } },
       alarms: { onAlarm: { addListener() {} }, get() {}, create() {} },
       notifications: {
         create: (id, options) => notifications.push({ id, title: options.title, message: options.message }),
@@ -76,7 +77,7 @@ function loadBackground(pages, initialStore = { monitorSites: { seasonaljobs: fa
   };
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(BACKGROUND_JS, 'utf8'), sandbox, { filename: BACKGROUND_JS });
-  return { ctx: sandbox, store, notifications, opened, clickListeners, pages, requests };
+  return { ctx: sandbox, store, notifications, opened, clickListeners, pages, requests, installedListeners };
 }
 
 const titles = (notifications) => notifications.map(n => n.title);
@@ -283,4 +284,18 @@ test('página da CoolWorks sem o bloco do perfil (só os frames de sempre) é er
   const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: COOLWORKS_WITHOUT_PROFILE, [HAMPTON_URL]: HAMPTON });
   const first = await bg.ctx.checkNewJobs();
   assert.equal(first.errors.join(' / '), `CoolWorks · The Island House: ${PROFILE_ERROR}`);
+});
+
+test('atualização de quem tinha pausado o monitor único: SeasonalJobs desligado, CoolWorks ligada', async () => {
+  const bg = loadBackground({}, { isMonitorActive: false });
+  await bg.installedListeners[0]({ reason: 'update' });
+  assert.equal(JSON.stringify(bg.store.monitorSites), '{"seasonaljobs":false,"coolworks":true}');
+  assert.equal('isMonitorActive' in bg.store, false);
+});
+
+test('instalação nova: os dois sites ligados e o histórico de vagas vistas zerado', async () => {
+  const bg = loadBackground({}, {});
+  await bg.installedListeners[0]({ reason: 'install' });
+  assert.equal(JSON.stringify(bg.store.monitorSites), '{"seasonaljobs":true,"coolworks":true}');
+  assert.equal(JSON.stringify([bg.store.seenJobs, bg.store.cwSeen, bg.store.cwSeeded]), '[[],[],false]');
 });

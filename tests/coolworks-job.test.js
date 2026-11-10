@@ -193,7 +193,7 @@ test('vaga da CoolWorks sem e-mail (só o "Apply Now" para um sistema externo) n
   const noEmail = {
     textContent: 'Houseboat Anchoring Crew Beach Bags',
     querySelector: (s) => (s === '#how-to-apply'
-      ? { textContent: 'How to Apply Apply Now Contact Info Lisa (928) 555-0100', querySelector: () => null }
+      ? { textContent: 'How to Apply Apply Now Contact Info Hiring Team (928) 555-0100', querySelector: () => null }
       : NEW_LAYOUT[s] ?? null)
   };
   const sandbox = {
