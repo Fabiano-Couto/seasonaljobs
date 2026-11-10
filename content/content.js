@@ -55,7 +55,12 @@ function createApplyButton(email) {
   btn.style.cssText = `
     position: fixed !important;
     bottom: 30px !important;
-    right: 30px !important;
+    left: 30px !important;
+    right: auto !important;
+    width: auto !important;
+    height: auto !important;
+    display: inline-block !important;
+    margin: 0 !important;
     background-color: #2e8540 !important;
     color: white !important;
     padding: 15px 20px !important;
