@@ -16,7 +16,7 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 - **SeasonalJobs (DOL):** a extensão consulta direto a busca do site (Azure Cognitive Search) **a cada 5 minutos**, uma vez por palavra-chave, pegando as 10 vagas ativas mais recentes de cada uma (a API do DOL só aceita pedir 1, 10 ou 12 por vez).
 - **CoolWorks · J1/H2B:** a cada 5 minutos a extensão lê a página [J1 / H2B Visa Jobs](https://www.coolworks.com/international-job-seekers) e o perfil de cada empresa listada nela. Avisa **toda** vaga nova dessa página (sem filtro de palavra-chave — a página já é o filtro), cada vaga nova no perfil dessas empresas e, com um aviso só, cada empresa nova que aparecer. As consultas vão com os cookies do seu Chrome (o site usa a proteção anti-robô do Cloudflare).
 - **Um liga/desliga por site** no popup, e o rodapé mostra a última verificação e qual site falhou, se falhar.
-- **Notificações Nativas:** a primeira leitura de cada site só registra o que já existe; depois disso, cada vaga nova vira um alerta do Windows/Chrome — clique nele para abrir a vaga.
+- **Notificações Nativas:** a primeira leitura de cada site — e, no SeasonalJobs, de cada palavra-chave nova — só registra o que já existe (palavra-chave adicionada hoje não avisa das vagas que já estavam publicadas); depois disso, cada vaga nova vira um alerta do Windows/Chrome — clique nele para abrir a vaga.
 
 ### ✍️ Templates de E-mail Dinâmicos
 - **Personalização por Vaga:** Crie modelos de e-mail personalizados para diferentes tipos de vagas (ex: um modelo para *Landscaping*, outro para *Housekeeping*).
@@ -67,7 +67,8 @@ node --test tests/
 
 - `tests/email-link.test.js` — link do botão (Gmail ou `mailto:`), conta do Gmail, aba nova, botões refeitos ao mudar a configuração, palavra-chave do título vencendo a da descrição, botões do perfil (uma vaga ou várias).
 - `tests/coolworks-job.test.js` — cargo e empresa lidos das páginas de vaga e de perfil da CoolWorks (JSON-LD primeiro, HTML como reserva), com o JSON-LD real em `tests/fixtures/`.
-- `tests/coolworks-monitor.test.js` — monitor da página J1/H2B: registro inicial, perfil que falha ou devolve página de bloqueio, empresa nova, limite da memória, decodificação de títulos e endereços, cookies nas consultas, migração do liga/desliga e clique nas notificações (cards reais em `tests/fixtures/`).
+- `tests/coolworks-monitor.test.js` — monitor da página J1/H2B: registro inicial, perfil que falha ou devolve página de bloqueio, perfil sem vagas, atributos do HTML em outra ordem, empresa nova, limite da memória, decodificação de títulos e endereços, cookies nas consultas, migração do liga/desliga na instalação e na atualização, clique nas notificações (cards reais em `tests/fixtures/`).
+- `tests/coolworks-job.test.js` também cobre a vaga sem e-mail (só "Apply Now"), que não ganha botão.
 - `tests/seasonaljobs-page.test.js` — leitura da página de vaga do SeasonalJobs (e-mail, cargo, empresa) com uma leitura do texto por verificação.
 
 O popup não tem teste automático (precisaria de um navegador ou de uma dependência como o jsdom); ele é conferido no Chrome.
