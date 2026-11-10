@@ -20,20 +20,29 @@ h2 {
   color: #112e51; /* Cor inspirada no DOL */
 }
 
-.site-btn {
-  padding: 5px 10px;
-  background: white;
+.site-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.site-link {
+  border: none;
+  background: none;
+  padding: 0;
   color: #005ea2;
-  border: 1px solid #005ea2;
-  border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
 }
 
-.site-btn:hover {
-  background: #005ea2;
-  color: white;
+.site-link:hover {
+  text-decoration: underline;
+}
+
+.site-help {
+  margin: 6px 0 0 0;
 }
 
 .hidden {
@@ -232,7 +241,7 @@ textarea:disabled {
   border-radius: 50%;
   width: 24px;
   height: 24px;
-  margin-right: 10px;
+  margin-left: 10px;
   cursor: pointer;
   font-size: 14px;
   line-height: 1;

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveStatus = document.getElementById('save-status');
   
   const resumeLinkInput = document.getElementById('resume-link');
-  const toggleMonitor = document.getElementById('toggle-monitor');
+  const siteToggles = document.querySelectorAll('input[data-site]');
   const statusText = document.getElementById('status-text');
   const lastCheckText = document.getElementById('last-check-text');
   const checkNowBtn = document.getElementById('check-now-btn');
@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeKeyword = null;
 
-  document.getElementById('open-site-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://seasonaljobs.dol.gov/' });
+  document.querySelectorAll('.site-link').forEach(link => {
+    link.addEventListener('click', () => chrome.tabs.create({ url: link.dataset.url }));
   });
 
   document.getElementById('close-template-btn').addEventListener('click', deselectKeyword);
@@ -39,25 +39,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load saved data
-  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'isMonitorActive', 'lastCheck'], (data) => {
+  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'isMonitorActive', 'monitorSites', 'lastCheck'], (data) => {
     const profiles = data.keywordProfiles || {};
-    
+
     // Atualiza a lista
     Object.keys(profiles).forEach(kw => {
       addKeywordToList(kw);
     });
-    
+
     if (data.resumeLink) {
       resumeLinkInput.value = data.resumeLink;
     }
     
-    // undefined = nunca mexeu no switch = ativo (mesma regra do background)
-    const isActive = data.isMonitorActive !== false;
-    toggleMonitor.checked = isActive;
-    updateStatusText(isActive);
-    if (data.isMonitorActive === undefined) {
-      chrome.storage.local.set({isMonitorActive: true});
-    }
+    // Mesma regra do background: o switch único antigo (isMonitorActive) valia só para o SeasonalJobs
+    const sites = data.monitorSites || { seasonaljobs: data.isMonitorActive !== false, coolworks: true };
+    siteToggles.forEach(toggle => {
+      toggle.checked = sites[toggle.dataset.site] !== false;
+    });
+    updateStatusText();
 
     updateKeywordHint();
     renderLastCheck(data.lastCheck);
@@ -107,11 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Toggle monitor
-  toggleMonitor.addEventListener('change', (e) => {
-    const isActive = e.target.checked;
-    updateStatusText(isActive);
-    chrome.storage.local.set({isMonitorActive: isActive});
+  // Liga/desliga o monitoramento de cada site
+  siteToggles.forEach(toggle => {
+    toggle.addEventListener('change', () => {
+      const monitorSites = {};
+      siteToggles.forEach(t => { monitorSites[t.dataset.site] = t.checked; });
+      updateStatusText();
+      chrome.storage.local.set({monitorSites}, () => {
+        // Site religado já é verificado, sem esperar o próximo alarme
+        if (toggle.checked) chrome.runtime.sendMessage({ type: 'checkNow' });
+      });
+    });
   });
 
   function addKeywordToList(kw) {
@@ -193,7 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const hora = new Date(lastCheck.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     if (lastCheck.errors && lastCheck.errors.length) {
-      lastCheckText.textContent = `${hora} · erro na busca`;
+      // Os erros começam pelo nome do site ("SeasonalJobs · Cook: HTTP 400", "CoolWorks: HTTP 403")
+      const sitesWithError = [...new Set(lastCheck.errors.map(err => err.split(/[\s:·]/)[0]))];
+      lastCheckText.textContent = `${hora} · erro no ${sitesWithError.join(' e ')} (passe o mouse)`;
       lastCheckText.title = lastCheck.errors.join('\n');
       lastCheckText.className = 'error';
     } else {
@@ -213,9 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1500);
   }
 
-  function updateStatusText(isActive) {
-    if (isActive) {
-      statusText.textContent = 'Monitoramento Ativo';
+  function updateStatusText() {
+    const active = Array.from(siteToggles).filter(t => t.checked).length;
+    if (active) {
+      statusText.textContent = active === siteToggles.length ? 'Monitoramento Ativo' : `Monitorando ${active} de ${siteToggles.length} sites`;
       statusText.style.color = '#2e8540';
     } else {
       statusText.textContent = 'Monitoramento Pausado';

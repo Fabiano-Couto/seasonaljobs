@@ -9,7 +9,6 @@
   <div class="container">
     <div class="header">
       <h2>🎯 Monitor de Vagas</h2>
-      <button id="open-site-btn" class="site-btn" title="Abrir seasonaljobs.dol.gov">🌐 Abrir site</button>
     </div>
 
     <div class="section">
@@ -37,16 +36,31 @@
       <div id="save-status">Salvo automaticamente</div>
     </div>
 
+    <div class="section">
+      <label class="section-title">🌐 Sites monitorados:</label>
+      <div class="site-row">
+        <button class="site-link" data-url="https://seasonaljobs.dol.gov/" title="Abrir seasonaljobs.dol.gov">SeasonalJobs (DOL) ↗</button>
+        <label class="switch">
+          <input type="checkbox" data-site="seasonaljobs" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="site-row">
+        <button class="site-link" data-url="https://www.coolworks.com/international-job-seekers" title="Abrir a página de vagas J1/H2B da coolworks.com">CoolWorks · J1/H2B ↗</button>
+        <label class="switch">
+          <input type="checkbox" data-site="coolworks" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <p class="help-text site-help">SeasonalJobs avisa pelas palavras-chave. CoolWorks avisa toda vaga nova da página J1/H2B e dos perfis das empresas listadas nela.</p>
+    </div>
+
     <div class="status-bar">
       <div class="status-info">
         <span id="status-text">Monitoramento Ativo</span>
         <span id="last-check-text"></span>
       </div>
       <button id="check-now-btn" class="check-btn" title="Verificar agora">↻</button>
-      <label class="switch">
-        <input type="checkbox" id="toggle-monitor" checked>
-        <span class="slider round"></span>
-      </label>
     </div>
   </div>
   <script src="popup.js"></script>

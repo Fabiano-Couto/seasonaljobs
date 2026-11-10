@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Seasonal Jobs Monitor",
-  "version": "1.1",
-  "description": "Monitora vagas no portal SeasonalJobs.dol.gov e alerta o usuário rapidamente.",
+  "version": "1.2",
+  "description": "Monitora vagas no SeasonalJobs.dol.gov e na CoolWorks.com e alerta o usuário rapidamente.",
   "permissions": [
     "storage",
     "alarms",
@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://seasonaljobs.dol.gov/*",
-    "https://api.seasonaljobs.dol.gov/*"
+    "https://api.seasonaljobs.dol.gov/*",
+    "https://www.coolworks.com/*"
   ],
   "icons": {
     "128": "icons/icon128.png"
@@ -27,7 +28,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://seasonaljobs.dol.gov/*"
+        "https://seasonaljobs.dol.gov/*",
+        "https://*.coolworks.com/*"
       ],
       "js": [
         "content/content.js"
