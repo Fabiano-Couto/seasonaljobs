@@ -21,7 +21,10 @@ function jobKeyOf(job) {
 
 function extractSeasonalJobs() {
   let email = null;
-  const bodyText = textOf(document.body);
+  // innerText do corpo uma só vez por verificação (roda a cada 1 s e força o layout da página): o texto com quebras
+  // de linha serve para a empresa ("Company Name:\nACME"); o com espaços colapsados, para o e-mail e o modelo
+  const rawText = document.body.innerText || document.body.textContent || '';
+  const bodyText = rawText.replace(/\s+/g, ' ').trim();
 
   // Tentativa 1: Regex focada no texto
   const emailMatch = bodyText.match(/Email address to Apply:\s*([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i);
@@ -52,7 +55,7 @@ function extractSeasonalJobs() {
   }
 
   let companyName = 'the company';
-  const companyMatch = (document.body.innerText || document.body.textContent || '').match(/Company Name:\s*\n*([^\n]+)/i);
+  const companyMatch = rawText.match(/Company Name:\s*\n*([^\n]+)/i);
   if (companyMatch && companyMatch[1]) {
     companyName = companyMatch[1].trim();
   }
