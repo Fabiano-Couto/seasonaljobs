@@ -55,6 +55,7 @@ function loadBackground(pages, initialStore = { monitorSites: { seasonaljobs: fa
       requests.push({ url, credentials: options.credentials });
       const page = pages[url];
       if (typeof page === 'string') return { ok: true, status: 200, text: async () => page };
+      if (page && page.json) return { ok: true, status: 200, json: async () => page.json };
       return { ok: false, status: page || 404, text: async () => '', json: async () => ({}) };
     },
     chrome: {
@@ -298,4 +299,49 @@ test('instalação nova: os dois sites ligados e o histórico de vagas vistas ze
   await bg.installedListeners[0]({ reason: 'install' });
   assert.equal(JSON.stringify(bg.store.monitorSites), '{"seasonaljobs":true,"coolworks":true}');
   assert.equal(JSON.stringify([bg.store.seenJobs, bg.store.cwSeen, bg.store.cwSeeded]), '[[],[],false]');
+});
+
+// ---------- Aviso-resumo (pedido do usuário, 10/11/2026) ----------
+// Muitas vagas novas de uma vez (dias com o computador desligado, site religado) viravam um aviso por vaga, cada um
+// esperando clique. Decisão do usuário: até 5 por site, um aviso por vaga; acima de 5, um aviso só, que abre o site.
+
+const postNumber = (n, title) => REAL_POST.replaceAll('83520', String(99000 + n)).replace('F&amp;B Supervisor', title);
+const withPosts = (count) => INTL.replace(REAL_POST,
+  Array.from({ length: count }, (_, i) => postNumber(i + 1, `Vaga ${i + 1}`)).join('\n') + '\n' + REAL_POST);
+
+test('CoolWorks: 6 vagas novas de uma vez viram um aviso-resumo que abre a página J1/H2B', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON });
+  await bg.ctx.checkNewJobs();
+  bg.pages[INTL_URL] = withPosts(6);
+  const result = await bg.ctx.checkNewJobs();
+  assert.equal(result.newCount, 6);
+  assert.deepEqual(bg.notifications.map(n => `${n.title} | ${n.message}`), [
+    '6 vagas novas — CoolWorks J1/H2B | Vaga 1, Vaga 2, Vaga 3 e mais 3'
+  ]);
+  bg.clickListeners[0](bg.notifications[0].id);
+  assert.deepEqual(bg.opened, [INTL_URL]);
+});
+
+test('CoolWorks: 5 vagas novas de uma vez continuam um aviso por vaga', async () => {
+  const bg = loadBackground({ [INTL_URL]: INTL, [ISLAND_URL]: ISLAND, [HAMPTON_URL]: HAMPTON });
+  await bg.ctx.checkNewJobs();
+  bg.pages[INTL_URL] = withPosts(5);
+  await bg.ctx.checkNewJobs();
+  assert.deepEqual(titles(bg.notifications), [1, 2, 3, 4, 5].map(n => `Nova vaga J1/H2B: Vaga ${n}`));
+});
+
+test('SeasonalJobs: 6 vagas novas de uma vez viram um aviso-resumo que abre o site', async () => {
+  const API = 'https://api.seasonaljobs.dol.gov/datahub/search?api-version=2020-06-30';
+  const job = (n, title) => ({ case_number: `H-400-00000-00000${n}`, job_title: title, employer_business_name: 'Acme Resort', worksite_city: 'Aspen', worksite_state: 'CO' });
+  const bg = loadBackground({ [API]: { json: { value: [job(1, 'Cook 1'), job(2, 'Cook 2')] } } },
+    { monitorSites: { seasonaljobs: true, coolworks: false }, keywordProfiles: { 'Cook': 'x' } });
+  await bg.ctx.checkNewJobs();
+  bg.pages[API] = { json: { value: [3, 4, 5, 6, 7, 8].map(n => job(n, `Cook ${n}`)).concat([job(1, 'Cook 1'), job(2, 'Cook 2')]) } };
+  const result = await bg.ctx.checkNewJobs();
+  assert.equal(result.newCount, 6);
+  assert.deepEqual(bg.notifications.map(n => `${n.title} | ${n.message}`), [
+    '6 vagas novas — SeasonalJobs | Cook 3, Cook 4, Cook 5 e mais 3'
+  ]);
+  bg.clickListeners[0](bg.notifications[0].id);
+  assert.deepEqual(bg.opened, ['https://seasonaljobs.dol.gov/']);
 });

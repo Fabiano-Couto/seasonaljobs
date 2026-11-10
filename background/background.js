@@ -87,6 +87,21 @@ async function checkNewJobs() {
   }
 }
 
+// Muitas vagas novas de uma vez (dias com o computador desligado, site religado) viravam um aviso por vaga,
+// cada um esperando clique. Decisão do usuário (10/11/2026): até 5 por site, um por vaga; acima disso, um resumo.
+const SUMMARY_ABOVE = 5;
+
+// alerts: [{ id, title, message, name }] de um site; site: { label, url } para o resumo
+function deliverAlerts(alerts, site) {
+  if (alerts.length <= SUMMARY_ABOVE) {
+    alerts.forEach(a => notify(a.id, a.title, a.message));
+    return;
+  }
+  const names = alerts.slice(0, 3).map(a => a.name).join(', ');
+  // O id leva o endereço a abrir: o service worker pode ter sido descarregado até o clique
+  notify(`url:${Date.now()}:${site.url}`, `${alerts.length} vagas novas — ${site.label}`, `${names} e mais ${alerts.length - 3}`);
+}
+
 function notify(id, title, message) {
   chrome.notifications.create(id, {
     type: 'basic',
@@ -132,7 +147,7 @@ async function fetchJobs(keyword) {
 async function checkSeasonalJobs(keywords, data, errors) {
   const seen = new Set(data.seenJobs || []);
   const seeded = new Set((data.seededKeywords || []).filter(kw => keywords.includes(kw)));
-  let newCount = 0;
+  const alerts = [];
 
   for (const keyword of keywords) {
     try {
@@ -146,14 +161,14 @@ async function checkSeasonalJobs(keywords, data, errors) {
         seen.add(jobId);
         if (isBaseline) continue;
 
-        newCount++;
         const city = job.worksite_city || job.employer_city || '';
         const state = job.worksite_state || '';
-        notify(
-          `job-${jobId}`,
-          `Nova vaga: ${job.job_title}`,
-          `${job.employer_business_name || ''}\n${city}${state ? ', ' + state : ''} · busca "${keyword}"`
-        );
+        alerts.push({
+          id: `job-${jobId}`,
+          title: `Nova vaga: ${job.job_title}`,
+          message: `${job.employer_business_name || ''}\n${city}${state ? ', ' + state : ''} · busca "${keyword}"`,
+          name: job.job_title
+        });
       }
 
       seeded.add(keyword);
@@ -169,7 +184,8 @@ async function checkSeasonalJobs(keywords, data, errors) {
   }
 
   await chrome.storage.local.set({ seenJobs, seededKeywords: [...seeded] });
-  return newCount;
+  deliverAlerts(alerts, { label: 'SeasonalJobs', url: `${SITE_URL}/` });
+  return alerts.length;
 }
 
 // ---------- CoolWorks (página J1/H2B) ----------
@@ -265,13 +281,10 @@ async function checkCoolworks(data, errors) {
   // Primeira leitura só registra o que já existe, sem notificar. Todas as vagas da página aceitam visto,
   // então não há filtro por palavra-chave: toda vaga nova avisa.
   const isBaseline = !data.cwSeeded;
-  let newCount = 0;
+  const alerts = [];
 
   // O id da notificação carrega o caminho da vaga: o service worker pode ter sido descarregado até o clique
-  const alert = (path, title, message) => {
-    newCount++;
-    notify(`cw-${path}`, title, message);
-  };
+  const alert = (path, title, message, name) => alerts.push({ id: `cw-${path}`, title, message, name });
 
   // Devolve se a chave já era conhecida e a põe no fim da lista: o corte do limite só tira o que saiu da página
   const markSeen = (key) => {
@@ -282,7 +295,7 @@ async function checkCoolworks(data, errors) {
 
   for (const post of page.posts) {
     if (markSeen(`post:${post.id}`) || isBaseline) continue;
-    alert(post.path, `Nova vaga J1/H2B: ${post.title}`, `${post.company}\n${post.location}`);
+    alert(post.path, `Nova vaga J1/H2B: ${post.title}`, `${post.company}\n${post.location}`, post.title);
   }
 
   // As empresas da página listam vagas no próprio perfil, que não aparecem na lista de vagas
@@ -300,7 +313,7 @@ async function checkCoolworks(data, errors) {
       // Empresa nova na página: um aviso só, em vez de um por vaga do perfil
       const count = openings === null ? 'veja as vagas no perfil'
         : openings.length === 1 ? '1 vaga no perfil' : `${openings.length} vagas no perfil`;
-      alert(`${profile.path}#job-openings`, `Nova empresa J1/H2B: ${profile.name}`, count);
+      alert(`${profile.path}#job-openings`, `Nova empresa J1/H2B: ${profile.name}`, count, `${profile.name} (empresa nova)`);
     }
     if (openings === null) continue;
 
@@ -309,7 +322,7 @@ async function checkCoolworks(data, errors) {
     const listKnown = markSeen(`openings:${profile.path}`);
     for (const opening of openings) {
       if (markSeen(`opening:${opening.id}`) || isBaseline || !listKnown) continue;
-      alert(`${profile.path}#job_${opening.id}`, `Nova vaga J1/H2B: ${opening.title}`, profile.name);
+      alert(`${profile.path}#job_${opening.id}`, `Nova vaga J1/H2B: ${opening.title}`, profile.name, opening.title);
     }
   }
 
@@ -321,7 +334,8 @@ async function checkCoolworks(data, errors) {
   // Página lida = registro inicial feito. Um perfil que falhar não trava mais o monitor: as vagas dele são
   // registradas em silêncio quando voltar a responder (chave openings:<perfil>)
   await chrome.storage.local.set({ cwSeen, cwSeeded: true });
-  return newCount;
+  deliverAlerts(alerts, { label: 'CoolWorks J1/H2B', url: COOLWORKS_INTL_URL });
+  return alerts.length;
 }
 
 // Quando clicar na notificação, abre a página da vaga
@@ -332,6 +346,10 @@ chrome.notifications.onClicked.addListener((notificationId) => {
     chrome.notifications.clear(notificationId);
   } else if (notificationId.startsWith('cw-')) {
     chrome.tabs.create({ url: COOLWORKS_URL + notificationId.slice(3) });
+    chrome.notifications.clear(notificationId);
+  } else if (notificationId.startsWith('url:')) {
+    // Aviso-resumo: "url:<hora>:<endereço>" — o endereço tem ":" (https:), por isso o resto inteiro
+    chrome.tabs.create({ url: notificationId.split(':').slice(2).join(':') });
     chrome.notifications.clear(notificationId);
   }
 });

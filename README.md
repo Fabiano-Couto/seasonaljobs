@@ -17,6 +17,7 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 - **CoolWorks · J1/H2B:** a cada 5 minutos a extensão lê a página [J1 / H2B Visa Jobs](https://www.coolworks.com/international-job-seekers) e o perfil de cada empresa listada nela. Avisa **toda** vaga nova dessa página (sem filtro de palavra-chave — a página já é o filtro), cada vaga nova no perfil dessas empresas e, com um aviso só, cada empresa nova que aparecer. As consultas vão com os cookies do seu Chrome (o site usa a proteção anti-robô do Cloudflare).
 - **Um liga/desliga por site** no popup, e o rodapé mostra a última verificação e qual site falhou, se falhar.
 - **Notificações Nativas:** a primeira leitura de cada site — e, no SeasonalJobs, de cada palavra-chave nova — só registra o que já existe (palavra-chave adicionada hoje não avisa das vagas que já estavam publicadas); depois disso, cada vaga nova vira um alerta do Windows/Chrome — clique nele para abrir a vaga.
+- **Aviso-resumo:** se chegarem mais de 5 vagas novas de uma vez num site (por exemplo, depois de dias com o computador desligado), vem um aviso só — "8 vagas novas — CoolWorks J1/H2B", com os 3 primeiros nomes — que abre a página do site.
 
 ### ✍️ Templates de E-mail Dinâmicos
 - **Personalização por Vaga:** Crie modelos de e-mail personalizados para diferentes tipos de vagas (ex: um modelo para *Landscaping*, outro para *Housekeeping*).
