@@ -24,7 +24,8 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 - Salve o link do seu portfólio, LinkedIn ou currículo em nuvem (Google Drive/Dropbox) nas configurações. A extensão anexa automaticamente a URL ao final de todo e-mail gerado.
 
 ### ⚡ Botão "Candidatar-se Agora"
-- Ao abrir qualquer vaga compatível, um botão flutuante e verde surgirá na tela. Com apenas um clique, seu cliente de e-mail padrão será aberto com o remetente, assunto (ex: `Application for Landscaper at Ortega's Lawn`) e o corpo do e-mail 100% prontos para enviar!
+- Ao abrir qualquer vaga compatível, um botão flutuante e verde surgirá na tela. Com apenas um clique, o e-mail abre com o destinatário, assunto (ex: `Application for Landscaper at Ortega's Lawn`) e o corpo 100% prontos para enviar!
+- **Gmail ou Outlook:** no popup, em "Enviar a candidatura pelo", escolha **Gmail** (padrão — abre a tela "Escrever" numa aba do Chrome) ou o **app de e-mail do Windows** (link `mailto:`, normalmente o Outlook). Com mais de uma conta Google no Chrome, informe a conta do Gmail que deve enviar; em branco, vale a conta principal.
 
 ---
 
@@ -47,6 +48,21 @@ O **Seasonal Jobs Monitor** foi desenvolvido para dar velocidade e inteligência
 4. **Currículo:** Cole o link público do seu currículo.
 5. **Monitor:** Ative a chave "Ativar Monitoramento de Novas Vagas".
 6. Clique em **Salvar Configurações** e navegue até [seasonaljobs.dol.gov](https://seasonaljobs.dol.gov) para ver a mágica acontecer!
+
+---
+
+## 🧪 Testes
+
+Sem dependências — só o Node (18 ou mais novo):
+
+```
+node --test tests/
+```
+
+- `tests/email-link.test.js` — link do botão (Gmail ou `mailto:`), conta do Gmail, aba nova, botões refeitos ao mudar a configuração.
+- `tests/coolworks-job.test.js` — cargo e empresa lidos das páginas de vaga e de perfil da CoolWorks (JSON-LD primeiro, HTML como reserva), com o JSON-LD real em `tests/fixtures/`.
+- `tests/coolworks-monitor.test.js` — monitor da página J1/H2B: registro inicial, perfil que falha, empresa nova, limite da memória, decodificação de títulos e endereços (cards reais em `tests/fixtures/`).
+- `tests/seasonaljobs-page.test.js` — leitura da página de vaga do SeasonalJobs (e-mail, cargo, empresa) com uma leitura do texto por verificação.
 
 ---
 

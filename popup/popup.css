@@ -45,6 +45,11 @@ h2 {
   margin: 6px 0 0 0;
 }
 
+#email-client {
+  margin-bottom: 8px;
+  background: white;
+}
+
 .hidden {
   display: none;
 }

@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveStatus = document.getElementById('save-status');
   
   const resumeLinkInput = document.getElementById('resume-link');
+  const emailClientSelect = document.getElementById('email-client');
+  const gmailAccountGroup = document.getElementById('gmail-account-group');
+  const gmailAccountInput = document.getElementById('gmail-account');
   const siteToggles = document.querySelectorAll('input[data-site]');
   const statusText = document.getElementById('status-text');
   const lastCheckText = document.getElementById('last-check-text');
@@ -39,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load saved data
-  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'isMonitorActive', 'monitorSites', 'lastCheck'], (data) => {
+  chrome.storage.local.get(['keywordProfiles', 'resumeLink', 'emailClient', 'gmailAccount', 'isMonitorActive', 'monitorSites', 'lastCheck'], (data) => {
     const profiles = data.keywordProfiles || {};
 
     // Atualiza a lista
@@ -50,6 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.resumeLink) {
       resumeLinkInput.value = data.resumeLink;
     }
+
+    // Sem escolha salva = Gmail (mesma regra do content.js)
+    emailClientSelect.value = data.emailClient === 'mailto' ? 'mailto' : 'gmail';
+    gmailAccountInput.value = data.gmailAccount || '';
+    updateGmailAccountVisibility();
     
     // Mesma regra do background: o switch único antigo (isMonitorActive) valia só para o SeasonalJobs
     const sites = data.monitorSites || { seasonaljobs: data.isMonitorActive !== false, coolworks: true };
@@ -66,6 +74,20 @@ document.addEventListener('DOMContentLoaded', () => {
   resumeLinkInput.addEventListener('input', () => {
     chrome.storage.local.set({resumeLink: resumeLinkInput.value});
   });
+
+  // Forma de envio: os botões já abertos nas páginas se refazem sozinhos (content.js escuta o storage)
+  emailClientSelect.addEventListener('change', () => {
+    chrome.storage.local.set({emailClient: emailClientSelect.value});
+    updateGmailAccountVisibility();
+  });
+
+  gmailAccountInput.addEventListener('input', () => {
+    chrome.storage.local.set({gmailAccount: gmailAccountInput.value.trim()});
+  });
+
+  function updateGmailAccountVisibility() {
+    gmailAccountGroup.classList.toggle('hidden', emailClientSelect.value !== 'gmail');
+  }
 
   // Adicionar palavra-chave
   addBtn.addEventListener('click', () => {

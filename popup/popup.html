@@ -18,6 +18,18 @@
     </div>
 
     <div class="section">
+      <label for="email-client" class="section-title">✉️ Enviar a candidatura pelo:</label>
+      <select id="email-client" class="full-input">
+        <option value="gmail">Gmail (abre numa aba do Chrome)</option>
+        <option value="mailto">App de e-mail do Windows (Outlook)</option>
+      </select>
+      <div id="gmail-account-group">
+        <input type="email" id="gmail-account" placeholder="sua.conta@gmail.com (opcional)" class="full-input">
+        <p class="help-text">Se o Chrome tem mais de uma conta Google, informe de qual o e-mail deve sair. Em branco, usa a conta principal.</p>
+      </div>
+    </div>
+
+    <div class="section">
       <label class="section-title">🔍 Vagas Monitoradas:</label>
       <div class="input-group">
         <input type="text" id="keyword-input" placeholder="Nova palavra-chave (ex: Line Cook)">

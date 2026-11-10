@@ -198,7 +198,10 @@ function pickTemplate(profiles, job) {
   return keyword ? { keyword, template: profiles[keyword] } : null;
 }
 
-function buildMailto(job, data) {
+// Configurações do popup que mudam o e-mail gerado
+const EMAIL_SETTINGS = ['keywordProfiles', 'resumeLink', 'emailClient', 'gmailAccount'];
+
+function composeEmail(job, data) {
   const profiles = data.keywordProfiles || {};
   const resumeLink = data.resumeLink || '';
   let { jobTitle, companyName } = job;
@@ -218,9 +221,35 @@ function buildMailto(job, data) {
     selectedTemplate += `\n\nLink to my resume: ${resumeLink}`;
   }
 
-  const subject = encodeURIComponent(`Application for ${jobTitle} at ${companyName}`);
-  const body = encodeURIComponent(selectedTemplate);
-  return `mailto:${job.email}?subject=${subject}&body=${body}`;
+  return { to: job.email, subject: `Application for ${jobTitle} at ${companyName}`, body: selectedTemplate };
+}
+
+// Gmail no Chrome é o padrão; "mailto" é o app de e-mail do Windows (Outlook), como era antes
+function buildEmailLink(job, data) {
+  const { to, subject, body } = composeEmail(job, data);
+
+  if (data.emailClient === 'mailto') {
+    return { href: `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, newTab: false };
+  }
+
+  // Tela "Escrever" do Gmail. Com várias contas Google no Chrome, sem authuser o e-mail sairia da conta principal.
+  // encodeURIComponent em vez de URLSearchParams: este manda espaço como "+".
+  const params = [['view', 'cm'], ['fs', '1']];
+  if (data.gmailAccount) params.push(['authuser', data.gmailAccount]);
+  params.push(['to', to], ['su', subject], ['body', body]);
+  const query = params.map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join('&');
+  return { href: `https://mail.google.com/mail/?${query}`, newTab: true };
+}
+
+function applyEmailLink(btn, link) {
+  btn.setAttribute('href', link.href);
+  if (link.newTab) {
+    btn.setAttribute('target', '_blank');
+    btn.setAttribute('rel', 'noopener');
+  } else {
+    btn.removeAttribute('target');
+    btn.removeAttribute('rel');
+  }
 }
 
 function createFloatingButton(key, html) {
@@ -269,11 +298,12 @@ function createApplyButton(job, jobKey) {
   const btn = createFloatingButton(jobKey, '🚀 <b>Candidatar-se Agora</b><br><small>Gerando e-mail...</small>');
   btn.title = `Para: ${job.email}`;
 
-  chrome.storage.local.get(['keywordProfiles', 'resumeLink'], (data) => {
+  chrome.storage.local.get(EMAIL_SETTINGS, (data) => {
     try {
       // Atualiza o botão existente
-      btn.href = buildMailto(job, data);
-      btn.innerHTML = '🚀 <b>Candidatar-se Agora</b><br><small>E-mail automático gerado</small>';
+      const link = buildEmailLink(job, data);
+      applyEmailLink(btn, link);
+      btn.innerHTML = `🚀 <b>Candidatar-se Agora</b><br><small>${link.newTab ? 'Abre no Gmail' : 'Abre no app de e-mail'}</small>`;
       enableButton(btn);
 
     } catch (e) {
@@ -335,9 +365,9 @@ function injectCardButton(opening) {
   if (header) header.appendChild(btn);
   else opening.card.prepend(btn);
 
-  chrome.storage.local.get(['keywordProfiles', 'resumeLink'], (data) => {
+  chrome.storage.local.get(EMAIL_SETTINGS, (data) => {
     try {
-      btn.href = buildMailto(opening, data);
+      applyEmailLink(btn, buildEmailLink(opening, data));
     } catch (e) {
       console.error('Erro ao gerar e-mail da vaga do perfil:', e);
       btn.href = '#';
@@ -346,6 +376,14 @@ function injectCardButton(opening) {
     enableButton(btn);
   });
 }
+
+// Mudou modelo, currículo ou forma de envio no popup: tira os botões e a próxima verificação refaz com o novo e-mail
+chrome.storage.onChanged.addListener((changes) => {
+  if (!EMAIL_SETTINGS.some(key => key in changes)) return;
+  const floating = document.getElementById(BTN_ID);
+  if (floating) floating.remove();
+  document.querySelectorAll(`.${CARD_BTN_CLASS}`).forEach(btn => btn.remove());
+});
 
 // Verifica a cada 1 segundo. Solução definitiva para SPAs (SeasonalJobs) e Turbo (CoolWorks).
 setInterval(checkAndInjectButton, 1000);
