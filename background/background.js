@@ -58,13 +58,17 @@ async function fetchJobs(keyword) {
       searchMode: 'all', // "Line Cook" exige as duas palavras, não uma ou outra
       filter: 'active eq true', // sem isso a API devolve vagas encerradas/pendentes
       orderby: 'dhTimestamp desc',
-      top: 25,
+      // Desde 14/10/2026 a API só aceita top 1, 10 ou 12 (qualquer outro valor = HTTP 400 "The request is invalid.").
+      // 10 é o tamanho de página que o próprio site usa; a cada 5 min sobra folga, saem poucas vagas por dia por palavra-chave.
+      top: 10,
       select: 'case_number,case_id,job_title,employer_business_name,worksite_city,worksite_state,employer_city'
     })
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    // A API devolve o motivo em JSON: {"error":"The request is invalid.","hint":"..."}
+    const body = await response.json().catch(() => ({}));
+    throw new Error(`HTTP ${response.status}${body.error ? ` (${body.error})` : ''}`);
   }
 
   const json = await response.json();
